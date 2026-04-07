@@ -1,0 +1,33 @@
+NWO Robotics Claude Plugin - API Endpoint Count
+================================================
+
+Total Tools in claude.json: 60
+
+Breakdown by Category:
+----------------------
+1. Core Robotics API: 15 tools
+2. Agent Discovery API: 5 tools  
+3. Agent Management API: 3 tools
+4. Simulation API: 6 tools
+5. Cosmos API: 1 tool
+6. Embodiment API: 6 tools
+7. Calibration API: 2 tools
+8. Online RL API: 2 tools
+9. Fine-tuning API: 2 tools
+10. Tactile Sensing API: 3 tools
+11. Dataset Hub API: 1 tool
+12. Swarm API: 3 tools
+13. Tasks API: 2 tools
+14. Config API: 2 tools
+15. Billing API: 2 tools
+16. IoT API: 2 tools
+17. Safety API: 2 tools
+18. Templates API: 2 tools
+19. Models API: 4 tools
+
+External Services (not counted as tools):
+- ROS2 Bridge
+- Edge API (Cloudflare Workers)
+- MQTT Broker
+
+Total: 60 Tools/Endpoints

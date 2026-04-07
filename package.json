@@ -1,0 +1,32 @@
+{
+  "name": "nwo-robotics-claude-plugin",
+  "version": "1.0.0",
+  "description": "Claude plugin for NWO Robotics API - 60+ endpoints for robot control",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "test": "jest"
+  },
+  "keywords": [
+    "claude",
+    "plugin",
+    "robotics",
+    "vla",
+    "automation",
+    "mcp"
+  ],
+  "author": "NWO Capital <ciprian.pater@publicae.org>",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}

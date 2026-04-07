@@ -1,0 +1,869 @@
+openapi: 3.0.0
+info:
+  title: NWO Robotics API
+  description: |
+    Complete API for controlling robots via NWO Robotics platform.
+    Supports Vision-Language-Action (VLA) inference, multi-agent swarms,
+    IoT sensor fusion, simulation, calibration, online RL, and more.
+  version: 1.0.0
+  contact:
+    name: NWO Capital
+    email: ciprian.pater@publicae.org
+    url: https://nwo.capital/webapp/nwo-robotics.html
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://nwo.capital/webapp
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  # Core VLA & Robot Control
+  /api-robotics.php:
+    post:
+      summary: VLA inference for robot control
+      operationId: nwo_inference
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [inference]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                instruction:
+                  type: string
+                  description: Natural language instruction for the robot
+                agent_id:
+                  type: string
+                image_url:
+                  type: string
+                proprioception:
+                  type: object
+              required: [instruction]
+      responses:
+        '200':
+          description: Inference result
+          content:
+            application/json:
+              schema:
+                type: object
+
+    get:
+      summary: Query robot state or list models
+      operationId: nwo_query
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [query_state, list_models, get_model_info]
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+        - name: model_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Query result
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api-robotics.php?action=execute:
+    post:
+      summary: Execute robot actions
+      operationId: nwo_execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agent_id:
+                  type: string
+                actions:
+                  type: array
+              required: [agent_id, actions]
+      responses:
+        '200':
+          description: Execution result
+
+  /api-robotics.php?action=sensor_fusion:
+    post:
+      summary: IoT sensor fusion
+      operationId: nwo_sensor_fusion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                instruction:
+                  type: string
+                temperature:
+                  type: number
+                humidity:
+                  type: number
+                gps:
+                  type: string
+                lidar:
+                  type: object
+              required: [instruction]
+      responses:
+        '200':
+          description: Fusion result
+
+  /api-robotics.php?action=task_planner:
+    post:
+      summary: Task planning
+      operationId: nwo_task_planner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                goal:
+                  type: string
+                constraints:
+                  type: array
+              required: [goal]
+      responses:
+        '200':
+          description: Plan result
+
+  /api-robotics.php?action=learning&subaction=recommend:
+    post:
+      summary: Learning recommendations
+      operationId: nwo_learning_recommend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                task:
+                  type: string
+                object:
+                  type: string
+              required: [task]
+      responses:
+        '200':
+          description: Recommendations
+
+  /api-robotics.php?action=register_agent:
+    post:
+      summary: Register agent
+      operationId: nwo_register_agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                capabilities:
+                  type: array
+                wallet_address:
+                  type: string
+              required: [name]
+      responses:
+        '200':
+          description: Registration result
+
+  # Agent Discovery & Management
+  /api-agent-discovery.php:
+    get:
+      summary: Agent discovery (health, whoami, capabilities, dry-run, plan)
+      operationId: nwo_agent_discovery
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [health, whoami, capabilities, dry-run, plan]
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+        - name: task
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Discovery result
+
+  /api-agent-register.php:
+    post:
+      summary: Register autonomous agent
+      operationId: nwo_agent_register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                wallet_address:
+                  type: string
+                capabilities:
+                  type: array
+              required: [name, wallet_address]
+      responses:
+        '200':
+          description: Registration result
+
+  /api-agent-pay.php:
+    post:
+      summary: Pay for tier upgrade
+      operationId: nwo_agent_pay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tier:
+                  type: string
+                  enum: [prototype, production]
+                tx_hash:
+                  type: string
+              required: [tier, tx_hash]
+      responses:
+        '200':
+          description: Payment result
+
+  /api-agent-balance.php:
+    get:
+      summary: Check quota and usage
+      operationId: nwo_agent_balance
+      responses:
+        '200':
+          description: Balance info
+
+  # Simulation
+  /api-simulation.php:
+    post:
+      summary: Simulation operations
+      operationId: nwo_simulation
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [simulate_trajectory, check_collision, estimate_torques, validate_grasp, plan_motion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    start: { type: object }
+                    end: { type: object }
+                    obstacles: { type: array }
+                  required: [start, end]
+                - type: object
+                  properties:
+                    object1: { type: object }
+                    object2: { type: object }
+                  required: [object1, object2]
+                - type: object
+                  properties:
+                    joint_positions: { type: array }
+                    payload: { type: number }
+                  required: [joint_positions]
+                - type: object
+                  properties:
+                    object: { type: object }
+                    gripper_pose: { type: object }
+                  required: [object, gripper_pose]
+                - type: object
+                  properties:
+                    start_config: { type: object }
+                    goal_config: { type: object }
+                    constraints: { type: array }
+                  required: [start_config, goal_config]
+      responses:
+        '200':
+          description: Simulation result
+
+  /api-simulation.php?action=get_scene_library:
+    get:
+      summary: Get available scenes
+      operationId: nwo_get_scene_library
+      responses:
+        '200':
+          description: Scene library
+
+  # Cosmos 3
+  /api-cosmos.php:
+    post:
+      summary: Cosmos 3 scene generation
+      operationId: nwo_cosmos_generate_scene
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [generate_scene]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                parameters:
+                  type: object
+              required: [description]
+      responses:
+        '200':
+          description: Generated scene
+
+  # Embodiment
+  /api-embodiment.php:
+    get:
+      summary: Robot embodiment operations
+      operationId: nwo_embodiment
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [list, detail, normalization, urdf, test_results]
+        - name: robot_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Embodiment data
+
+  /api-embodiment.php?action=compare:
+    post:
+      summary: Compare robots
+      operationId: nwo_embodiment_compare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                robot_ids:
+                  type: array
+              required: [robot_ids]
+      responses:
+        '200':
+          description: Comparison result
+
+  # Calibration
+  /api-calibration.php:
+    post:
+      summary: Calibration operations
+      operationId: nwo_calibration
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [calibrate, run_calibration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    raw_scores: { type: array }
+                    method: { type: string }
+                  required: [raw_scores]
+                - type: object
+                  properties:
+                    robot_id: { type: string }
+                    iterations: { type: number }
+                  required: [robot_id]
+      responses:
+        '200':
+          description: Calibration result
+
+  # Online RL
+  /api-online-rl.php:
+    post:
+      summary: Online reinforcement learning
+      operationId: nwo_online_rl
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [start_online_rl, submit_telemetry]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    task: { type: string }
+                    parameters: { type: object }
+                  required: [task]
+                - type: object
+                  properties:
+                    session_id: { type: string }
+                    telemetry: { type: object }
+                  required: [session_id, telemetry]
+      responses:
+        '200':
+          description: RL result
+
+  # Fine-tuning
+  /api-fine-tune.php:
+    post:
+      summary: Fine-tuning operations
+      operationId: nwo_fine_tune
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [create_dataset, start_job]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    name: { type: string }
+                    data: { type: array }
+                  required: [name, data]
+                - type: object
+                  properties:
+                    dataset_id: { type: string }
+                    model: { type: string }
+                    hyperparameters: { type: object }
+                  required: [dataset_id]
+      responses:
+        '200':
+          description: Fine-tune result
+
+  # ORCA Tactile
+  /api-orca.php:
+    post:
+      summary: Read ORCA tactile sensors
+      operationId: nwo_orca_get_tactile
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [get_tactile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hand_id:
+                  type: string
+              required: [hand_id]
+      responses:
+        '200':
+          description: Tactile data
+
+  # Tactile Processing
+  /api-tactile.php:
+    post:
+      summary: Tactile processing
+      operationId: nwo_tactile
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [process_input, slip_detection]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    sensor_data: { type: object }
+                    calibration: { type: object }
+                  required: [sensor_data]
+                - type: object
+                  properties:
+                    sensor_data: { type: object }
+                    threshold: { type: number }
+                  required: [sensor_data]
+      responses:
+        '200':
+          description: Tactile result
+
+  # Unitree Datasets
+  /api-unitree-datasets.php:
+    get:
+      summary: List available datasets
+      operationId: nwo_unitree_datasets_list
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [list]
+      responses:
+        '200':
+          description: Dataset list
+
+  # Swarm Operations
+  /api/swarm/join:
+    post:
+      summary: Join robot to swarm
+      operationId: nwo_swarm_join
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                swarm_id:
+                  type: string
+                robot_id:
+                  type: string
+              required: [swarm_id, robot_id]
+      responses:
+        '200':
+          description: Join result
+
+  /api/swarm/leave:
+    post:
+      summary: Remove robot from swarm
+      operationId: nwo_swarm_leave
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                swarm_id:
+                  type: string
+                robot_id:
+                  type: string
+              required: [swarm_id, robot_id]
+      responses:
+        '200':
+          description: Leave result
+
+  /api/swarm/broadcast:
+    post:
+      summary: Broadcast command to swarm
+      operationId: nwo_swarm_broadcast
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                swarm_id:
+                  type: string
+                message:
+                  type: object
+              required: [swarm_id, message]
+      responses:
+        '200':
+          description: Broadcast result
+
+  # Tasks
+  /api/tasks/list:
+    get:
+      summary: List tasks
+      operationId: nwo_tasks_list
+      responses:
+        '200':
+          description: Task list
+
+  /api/tasks/history:
+    get:
+      summary: Task execution history
+      operationId: nwo_tasks_history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task history
+
+  # Config
+  /api/config/get:
+    get:
+      summary: Get configuration
+      operationId: nwo_config_get
+      parameters:
+        - name: key
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Config value
+
+  /api/config/set:
+    post:
+      summary: Set configuration
+      operationId: nwo_config_set
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                value: {}
+              required: [key, value]
+      responses:
+        '200':
+          description: Set result
+
+  # Billing
+  /api/billing/usage:
+    get:
+      summary: Check API usage
+      operationId: nwo_billing_usage
+      responses:
+        '200':
+          description: Usage data
+
+  /api/billing/invoice:
+    get:
+      summary: Get invoices
+      operationId: nwo_billing_invoice
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice data
+
+  # IoT
+  /api/iot/command:
+    post:
+      summary: Send IoT command
+      operationId: nwo_iot_command
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_id:
+                  type: string
+                command:
+                  type: object
+              required: [device_id, command]
+      responses:
+        '200':
+          description: Command result
+
+  /api/iot/status:
+    get:
+      summary: Get IoT device status
+      operationId: nwo_iot_status
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device status
+
+  # Safety
+  /api/safety/check:
+    post:
+      summary: Run safety validation
+      operationId: nwo_safety_check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: object
+                context:
+                  type: object
+              required: [action]
+      responses:
+        '200':
+          description: Safety check result
+
+  /api/safety/alert:
+    post:
+      summary: Send safety alert
+      operationId: nwo_safety_alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                level:
+                  type: string
+                  enum: [info, warning, critical]
+                message:
+                  type: string
+              required: [level, message]
+      responses:
+        '200':
+          description: Alert sent
+
+  # Templates
+  /api/template/list:
+    get:
+      summary: List code templates
+      operationId: nwo_template_list
+      responses:
+        '200':
+          description: Template list
+
+  /api/template/get:
+    get:
+      summary: Get template
+      operationId: nwo_template_get
+      parameters:
+        - name: template_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template content
+
+  # Models
+  /api/models/list:
+    get:
+      summary: List available models
+      operationId: nwo_models_list
+      responses:
+        '200':
+          description: Model list
+
+  /api/models/upload:
+    post:
+      summary: Upload model
+      operationId: nwo_models_upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                file:
+                  type: string
+              required: [name, file]
+      responses:
+        '200':
+          description: Upload result
+
+  /api/models/download:
+    get:
+      summary: Download model
+      operationId: nwo_models_download
+      parameters:
+        - name: model_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model file
+
+  /api/models/delete:
+    delete:
+      summary: Delete model
+      operationId: nwo_models_delete
+      parameters:
+        - name: model_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delete result
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key

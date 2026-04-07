@@ -1,0 +1,140 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "NWO Robotics",
+  "name_for_model": "nwo_robotics",
+  "description_for_human": "Control robots using Vision-Language-Action AI. Send natural language commands, manage swarms, and integrate IoT sensors for intelligent automation.",
+  "description_for_model": "Plugin for controlling robots via the NWO Robotics API. Supports natural language commands, multi-agent swarms, IoT sensor fusion, task planning, and learning-based recommendations. All robot control commands require user confirmation before execution.",
+  "auth": {
+    "type": "api_key",
+    "authorization_type": "bearer",
+    "verification_tokens": {
+      "openai": "nwo_robotics_verification_token"
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://nwo.capital/webapp/.well-known/openapi.yaml",
+    "is_user_authenticated": true
+  },
+  "logo_url": "https://nwo.capital/webapp/nwo-robotics-logo.png",
+  "contact_email": "ciprian.pater@publicae.org",
+  "legal_info_url": "https://nwo.capital/terms",
+  "privacy_policy_url": "https://nwo.capital/privacy",
+  "http_auth_header": "X-API-Key",
+  "endpoints": [
+    {
+      "path": "/api-robotics.php",
+      "method": "POST",
+      "name": "robotics_inference",
+      "description": "Send VLA inference requests to control robots"
+    },
+    {
+      "path": "/api-robotics.php",
+      "method": "GET",
+      "name": "query_robot_state",
+      "description": "Query robot state and telemetry"
+    },
+    {
+      "path": "/api-agent-discovery.php",
+      "method": "GET",
+      "name": "agent_discovery",
+      "description": "Discover agent capabilities and health"
+    },
+    {
+      "path": "/api-agent-register.php",
+      "method": "POST",
+      "name": "agent_registration",
+      "description": "Register new autonomous agents"
+    },
+    {
+      "path": "/api-agent-pay.php",
+      "method": "POST",
+      "name": "agent_payment",
+      "description": "Process ETH payment for tier upgrade"
+    },
+    {
+      "path": "/api-agent-balance.php",
+      "method": "GET",
+      "name": "agent_balance",
+      "description": "Check API quota and usage"
+    },
+    {
+      "path": "/api-simulation.php",
+      "method": "POST",
+      "name": "simulation",
+      "description": "Trajectory validation, collision detection, motion planning"
+    },
+    {
+      "path": "/api-cosmos.php",
+      "method": "POST",
+      "name": "cosmos_scene_generation",
+      "description": "Generate synthetic training scenes with Cosmos"
+    },
+    {
+      "path": "/api-embodiment.php",
+      "method": "GET",
+      "name": "embodiment",
+      "description": "Robot specifications, URDF downloads, comparison"
+    },
+    {
+      "path": "/api-calibration.php",
+      "method": "POST",
+      "name": "calibration",
+      "description": "Confidence calibration and auto-calibration"
+    },
+    {
+      "path": "/api-online-rl.php",
+      "method": "POST",
+      "name": "online_rl",
+      "description": "Online reinforcement learning sessions"
+    },
+    {
+      "path": "/api-fine-tune.php",
+      "method": "POST",
+      "name": "fine_tuning",
+      "description": "Create datasets and start fine-tuning jobs"
+    },
+    {
+      "path": "/api-tactile.php",
+      "method": "POST",
+      "name": "tactile_sensing",
+      "description": "Process tactile sensor data and slip detection"
+    },
+    {
+      "path": "/api/swarm",
+      "method": "POST",
+      "name": "swarm_commands",
+      "description": "Multi-agent swarm coordination"
+    },
+    {
+      "path": "/api/tasks",
+      "method": "GET",
+      "name": "task_management",
+      "description": "List tasks and view execution history"
+    },
+    {
+      "path": "/api/iot",
+      "method": "POST",
+      "name": "iot_commands",
+      "description": "Send commands to IoT devices"
+    },
+    {
+      "path": "/api/safety",
+      "method": "POST",
+      "name": "safety_checks",
+      "description": "Run safety validation and send alerts"
+    },
+    {
+      "path": "/api/template",
+      "method": "GET",
+      "name": "code_templates",
+      "description": "Get code templates for common tasks"
+    },
+    {
+      "path": "/api/models",
+      "method": "GET",
+      "name": "model_management",
+      "description": "List, upload, download, delete models"
+    }
+  ]
+}
