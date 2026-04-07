@@ -78,7 +78,7 @@ The plugin uses API key authentication. Your key is stored securely and never sh
 
 ## 🏠 Homepage
 
-[https://nwo.capital/webapp/nwo-robotics.html](https://nwo.capital/webapp/nwo-robotics.html)
+[https://nworobotics.cloud](https://nworobotics.cloud)
 
 ## 📄 License
 
