@@ -1,32 +1,38 @@
 {
-  "name": "nwo-robotics-claude-plugin",
-  "version": "1.0.0",
-  "description": "Claude plugin for NWO Robotics API - 60+ endpoints for robot control",
-  "main": "dist/index.js",
+  "name": "nwo-claude-plugin",
+  "version": "2.0.0",
+  "description": "NWO Robotics MCP Server for Claude — 85 tools across robotics, swarms, IoT, and Cardiac Identity",
   "type": "module",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/index.js",
-    "lint": "eslint src/**/*.ts",
-    "test": "jest"
+    "build":  "tsc",
+    "start":  "node dist/index.js",
+    "dev":    "tsx watch src/index.ts",
+    "lint":   "tsc --noEmit"
   },
-  "keywords": [
-    "claude",
-    "plugin",
-    "robotics",
-    "vla",
-    "automation",
-    "mcp"
-  ],
-  "author": "NWO Capital <ciprian.pater@publicae.org>",
+  "keywords": ["mcp", "claude", "robotics", "vla", "nwo", "cardiac", "iot", "swarm"],
+  "author": "RedCiprianPater",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
-    "zod": "^3.22.4"
+    "@modelcontextprotocol/sdk": "^1.10.0",
+    "cors":    "^2.8.5",
+    "dotenv":  "^16.3.1",
+    "express": "^4.18.2",
+    "helmet":  "^7.1.0",
+    "zod":     "^3.22.0"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "typescript": "^5.3.0"
-  }
+    "@types/cors":         "^2.8.17",
+    "@types/express":      "^4.17.21",
+    "@types/node":         "^20.0.0",
+    "tsx":                 "^4.7.0",
+    "typescript":          "^5.4.0"
+  },
+  "engines": { "node": ">=18.0.0" },
+  "repository": {
+    "type": "git",
+    "url":  "https://github.com/RedCiprianPater/nwo-claude-plugin.git"
+  },
+  "bugs":     { "url": "https://github.com/RedCiprianPater/nwo-claude-plugin/issues" },
+  "homepage": "https://nwo.capital"
 }
