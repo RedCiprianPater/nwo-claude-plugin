@@ -49,6 +49,7 @@ claude mcp add nwo-robotics https://nwo-chatgpt-app.onrender.com/mcp \
 ```
 
 Get your API key at [nwo.capital/webapp/api-key.php](https://nwo.capital/webapp/api-key.php)
+Fallback: [(https://huggingface.co/spaces/CPater/nwo-capital](https://huggingface.co/spaces/CPater/nwo-capital) 
 
 ---
 
