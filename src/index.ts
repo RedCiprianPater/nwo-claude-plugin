@@ -3,22 +3,27 @@
  * ──────────────────────────────────────────────────────────────────────────
  * Comprehensive Model Context Protocol server for the NWO ecosystem.
  *
- * ~140 tools across ~25 categories. Render-primary (nwo-capital-api), with
- * the legacy nwo.capital PHP host kept ONLY as a fallback for GPU and
- * streaming workloads. Includes all the new endpoints from app.py v3:
- * agents, discovery, embodiment, calibration, RL, finetune, datasets,
- * tactile, safety, learning, the L2-L6 layered platform, agent graph,
- * compute proxies, billing/subscriptions. Adds the runner v7 agentic
- * services: DeerFlow, NWO MR generation, METASTATE, NWO-ASM, recruitment.
- * Existing BYOR, ROS2 bridge, Cardiac Oracle/Relayer tools retained.
+ * 133 tools across 22 sections. Render-only stack (nwo-capital-api).
+ * Includes all the new endpoints from app.py v3: agents, discovery,
+ * embodiment, calibration, RL, finetune, datasets, tactile, safety,
+ * learning, the L2-L6 layered platform, agent graph, compute proxies,
+ * billing/subscriptions. Adds the runner v7 agentic services: DeerFlow,
+ * NWO MR generation, METASTATE, NWO-ASM, recruitment. Existing BYOR,
+ * ROS2 bridge, Cardiac Oracle/Relayer tools retained.
  *
- * Removed from v2.1.0 (matches runner v7 removals):
+ * Removed in v3.0.0:
  *   - spqr_trade (Uniswap V3 trading) — parked
  *   - oracle_predict (NWO Oracle price prediction) — parked
+ *   - All 42 PHP fallback tools — the legacy nwo.capital PHP backend is
+ *     no longer reachable through this MCP. Use the HF Space's API Key
+ *     system (issued via Render, stored in Supabase) for everything.
  *
  * Auth model:
- *   - X-API-Key: required for Render endpoints (validated server-side
- *     via POST /api/api-keys/validate on the Render gateway).
+ *   - X-API-Key: required for all endpoints. The same key system used
+ *     by the HF Space at https://huggingface.co/spaces/CPater/nwo-capital
+ *     — keys are minted, validated, and revoked via the Render gateway
+ *     (`/api/api-keys/*`) and persisted in Supabase. Get a key via
+ *     `nwo_r_keys_create` once connected, or through the HF Space UI.
  *   - X-Relayer-Secret: required for Cardiac Relayer writes.
  *   - X-Oracle-Secret: required for Cardiac Oracle ECG validation.
  *   - X-Wallet: optional, attaches caller's ETH wallet to BYOR
@@ -44,9 +49,6 @@ import "dotenv/config";
 const RENDER_BASE     = process.env.NWO_RENDER_URL   || "https://nwo-capital-api.onrender.com";
 const RENDER_API      = `${RENDER_BASE}/api`;
 
-// FALLBACK: legacy PHP host. Only used for GPU and streaming.
-const NWO_BASE        = "https://nwo.capital/webapp";
-
 // Standalone Render services.
 const ROS2_BASE       = "https://nwo-ros2-bridge.onrender.com";
 const ORACLE_BASE     = "https://nwo-oracle.onrender.com";
@@ -56,8 +58,8 @@ const RELAYER_BASE    = "https://nwo-relayer.onrender.com";
 const EDGE_BASE       = "https://nwo-robotics-api-edge.ciprianpater.workers.dev";
 const RUNNER_BASE     = process.env.NWO_RUNNER_URL   || "https://nwo-runner.ciprianpater.workers.dev";
 
-// Agentic services from runner v7.
-const DEERFLOW_BASE   = `${NWO_BASE}/api`;
+// Agentic services from runner v7. DeerFlow flows through the Render
+// gateway under /api/deerflow/{research,code,docs}; no direct PHP path.
 const MR_BLASTER      = process.env.NWO_MR_BLASTER_URL  || "https://nwo-blaster.ciprianpater.workers.dev";
 const METASTATE_BASE  = process.env.NWO_METASTATE_URL   || "https://cpater-metastate.hf.space";
 const METASTATE_BCN   = process.env.NWO_METASTATE_BEACON || "https://metastate-beacon.ciprianpater.workers.dev";
@@ -120,10 +122,6 @@ async function apiFetchMultipart(
 const render = (apiKey: string, path: string, o: FetchOptions = {}) =>
   apiFetch(`${RENDER_API}${path}`, { ...o, headers: { "X-API-Key": apiKey, ...(o.headers ?? {}) } });
 
-// FALLBACK: PHP host helper
-const nwo = (apiKey: string, path: string, o: FetchOptions = {}) =>
-  apiFetch(`${NWO_BASE}${path}`, { ...o, headers: { "X-API-Key": apiKey, ...(o.headers ?? {}) } });
-
 const ros2 = (apiKey: string, path: string, o: FetchOptions = {}) =>
   apiFetch(`${ROS2_BASE}${path}`, { ...o, headers: { "X-API-Key": apiKey, ...(o.headers ?? {}) } });
 
@@ -159,10 +157,10 @@ function createServer(apiKey: string, relayerSecret: string, oracleSecret: strin
   //                  │  nwo-capital-api.onrender.com  │
   //                  ╰───────────────────────────────╯
   //
-  // The following ~70 tools are served by the v3 Render gateway. Every tool
+  // The following ~76 tools are served by the v3 Render gateway. Every tool
   // here has its name prefixed `nwo_r_` to make it obvious in chat that the
-  // call goes to Render. Legacy PHP tools (still kept for fallback) live at
-  // the bottom of this file under SECTION 25.
+  // call goes to Render. There is no PHP fallback in v3.0.0; all auth flows
+  // through the same `/api/api-keys/*` endpoints the HF Space uses.
   // ════════════════════════════════════════════════════════════════════════
 
   // ════════════════════════════════════════════════════════════════════════
@@ -887,6 +885,19 @@ function createServer(apiKey: string, relayerSecret: string, oracleSecret: strin
   // ════════════════════════════════════════════════════════════════════════
 
   // ════════════════════════════════════════════════════════════════════════
+  // SECTION 14.5. EDGE INFERENCE (Cloudflare Worker, ~28ms global)
+  // Independent of Render and PHP — keeps working even if either is down.
+  // Auth uses the same X-API-Key (validated against Render's key registry).
+  // ════════════════════════════════════════════════════════════════════════
+
+  server.tool("nwo_edge_inference",
+    "Ultra-low-latency VLA inference via the NWO global edge network (200+ Cloudflare locations, ~28ms). Independent path that bypasses both Render and the legacy PHP host. Use for time-critical inference; use the heavier model paths via Render for accuracy-critical work.",
+    { instruction: z.string(), images: z.array(z.string()).optional() },
+    { readOnlyHint: false, destructiveHint: false },
+    async (args) => ok(await apiFetch(`${EDGE_BASE}/api/inference`, { method: "POST", headers: { "X-API-Key": apiKey }, body: args }))
+  );
+
+  // ════════════════════════════════════════════════════════════════════════
   // SECTION 15. ROS2 BRIDGE (nwo-ros2-bridge.onrender.com)
   // ════════════════════════════════════════════════════════════════════════
 
@@ -1053,7 +1064,7 @@ function createServer(apiKey: string, relayerSecret: string, oracleSecret: strin
       deadline_hours: z.number().int().optional(),
     },
     { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await apiFetch(`${DEERFLOW_BASE}/deerflow/research`, { method: "POST", headers: { "X-API-Key": apiKey }, body: args }))
+    async (args) => ok(await render(apiKey, "/deerflow/research", { method: "POST", body: args }))
   );
 
   server.tool("agentic_deerflow_code",
@@ -1065,7 +1076,7 @@ function createServer(apiKey: string, relayerSecret: string, oracleSecret: strin
       client_wallet: z.string(),
     },
     { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await apiFetch(`${DEERFLOW_BASE}/deerflow/code`, { method: "POST", headers: { "X-API-Key": apiKey }, body: args }))
+    async (args) => ok(await render(apiKey, "/deerflow/code", { method: "POST", body: args }))
   );
 
   server.tool("agentic_deerflow_docs",
@@ -1077,7 +1088,7 @@ function createServer(apiKey: string, relayerSecret: string, oracleSecret: strin
       client_wallet: z.string(),
     },
     { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await apiFetch(`${DEERFLOW_BASE}/deerflow/docs`, { method: "POST", headers: { "X-API-Key": apiKey }, body: args }))
+    async (args) => ok(await render(apiKey, "/deerflow/docs", { method: "POST", body: args }))
   );
 
   // ════════════════════════════════════════════════════════════════════════
@@ -1281,419 +1292,6 @@ function createServer(apiKey: string, relayerSecret: string, oracleSecret: strin
       return ok(await apiFetch(`${base}/recruit/${encodeURIComponent(recruiter_wallet)}`, { params: { kind: message_kind } }));
     }
   );
-
-  // ════════════════════════════════════════════════════════════════════════
-  //                  ╭───────────────────────────────╮
-  //                  │  FALLBACK: nwo.capital (PHP)  │
-  //                  ╰───────────────────────────────╯
-  //
-  // SECTION 25. EVERY existing PHP tool from v2.1.0, retained verbatim as
-  // fallback. Use these only when the matching Render tool above is
-  // unavailable, or when GPU/streaming is required (inference, cosmos,
-  // streaming WS/SSE, GPU fine-tune training, slip detection).
-  //
-  // Name convention: tools without the `nwo_r_` prefix are PHP fallback.
-  // Where the same logical action exists on both, the Render version is
-  // the canonical one. Both are kept so the MCP can survive Render outages
-  // and serve callers who still need the legacy PHP surface.
-  // ════════════════════════════════════════════════════════════════════════
-
-  // ───── 25.1 Inference & Models (PHP fallback for GPU; edge unchanged) ────
-  server.tool("nwo_inference",
-    "[FALLBACK] PHP VLA inference. GPU-bound. Prefer nwo_r_* tools where available; this is the canonical GPU path until /api/v1/inference ships on Render.",
-    {
-      instruction:      z.string(),
-      images:           z.array(z.string()).optional(),
-      model_id:         z.string().optional(),
-      agent_id:         z.string().optional(),
-      use_model_router: z.boolean().optional(),
-    },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "inference" }, body: args }))
-  );
-
-  server.tool("nwo_edge_inference",
-    "Ultra-low-latency VLA inference via global edge network (~28ms). Cloudflare Worker — unaffected by Render/PHP split.",
-    { instruction: z.string(), images: z.array(z.string()).optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await apiFetch(`${EDGE_BASE}/api/inference`, { method: "POST", body: args }))
-  );
-
-  server.tool("nwo_list_models",
-    "[FALLBACK] PHP list_models. Prefer nwo_r_model_usage which returns the live roster + usage in one call.",
-    {},
-    { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-robotics.php", { params: { action: "list_models" } }))
-  );
-
-  server.tool("nwo_get_model_info",
-    "[FALLBACK] PHP get_model_info. Performance stats for one model.",
-    { model_id: z.string() }, { readOnlyHint: true },
-    async ({ model_id }) => ok(await nwo(apiKey, "/api-robotics.php", { params: { action: "get_model_info", model_id } }))
-  );
-
-  server.tool("nwo_get_streaming_config",
-    "[FALLBACK] WebSocket/SSE streaming frequencies and chunk size options. PHP-bound (Render has no streaming surface yet).",
-    {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-robotics.php", { params: { action: "streaming_config" } }))
-  );
-
-  // ───── 25.2 Robot Control & State (PHP) ─────────────────────────────────
-  server.tool("nwo_query_robot_state",
-    "[FALLBACK] PHP query_state. Joint angles, gripper, position, battery. Prefer nwo_r_robots_get for registry data.",
-    { agent_id: z.string(), include_image: z.boolean().optional() }, { readOnlyHint: true },
-    async ({ agent_id, include_image }) => ok(await nwo(apiKey, "/api-robotics.php", { params: { action: "query_state", agent_id, include_image } }))
-  );
-
-  server.tool("nwo_execute_actions",
-    "[FALLBACK] PHP execute. Low-level joint actions. Real-time control path.",
-    { agent_id: z.string(), actions: z.array(z.array(z.number())), safety_check: z.boolean().optional().default(true), speed: z.number().optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "execute" }, body: args }))
-  );
-
-  server.tool("nwo_sensor_fusion",
-    "[FALLBACK] PHP sensor_fusion. Multi-modal sensor fusion for decision-making.",
-    {
-      instruction: z.string(), agent_id: z.string().optional(), images: z.array(z.string()).optional(),
-      sensors: z.object({
-        temperature: z.object({ value: z.number(), unit: z.string() }).optional(),
-        proximity: z.object({ distance: z.number(), unit: z.string() }).optional(),
-        force: z.record(z.number()).optional(),
-        gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
-        lidar: z.record(z.unknown()).optional(),
-      }).optional(),
-    },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "sensor_fusion" }, body: args }))
-  );
-
-  server.tool("nwo_robot_query",
-    "[FALLBACK] PHP robot_query. Status / battery / current task.",
-    { agent_id: z.string() }, { readOnlyHint: true },
-    async ({ agent_id }) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "robot_query" }, body: { agent_id } }))
-  );
-
-  server.tool("nwo_get_agent_status",
-    "[FALLBACK] PHP get_agent_status. Tasks completed + success rate.",
-    { agent_id: z.string() }, { readOnlyHint: true },
-    async ({ agent_id }) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "get_agent_status" }, body: { agent_id } }))
-  );
-
-  server.tool("nwo_status_poll",
-    "[FALLBACK] PHP status_poll. Poll an ongoing task by task_id.",
-    { task_id: z.string(), agent_id: z.string() }, { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "status_poll" }, body: args }))
-  );
-
-  // ───── 25.3 Task Planning (PHP — GPU LLM) ───────────────────────────────
-  server.tool("nwo_task_planner",
-    "[FALLBACK] PHP task_planner. GPU LLM decomposes a high-level goal into ordered subtasks. No Render equivalent yet.",
-    { instruction: z.string(), agent_id: z.string().optional(), context: z.record(z.unknown()).optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "task_planner" }, body: args }))
-  );
-
-  server.tool("nwo_execute_subtask",
-    "[FALLBACK] PHP execute_subtask. Execute a numbered subtask from an existing plan.",
-    { plan_id: z.string(), subtask_order: z.number(), agent_id: z.string() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "execute_subtask" }, body: args }))
-  );
-
-  // ───── 25.4 Learning PHP (Render version is nwo_r_learning_*) ────────────
-  server.tool("nwo_learning_recommend",
-    "[FALLBACK] PHP learning recommend. Prefer nwo_r_learning_recommend.",
-    { agent_id: z.string().optional(), task_description: z.string() }, { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "learning", subaction: "recommend" }, body: args }))
-  );
-
-  server.tool("nwo_learning_log",
-    "[FALLBACK] PHP learning log. Prefer nwo_r_learning_log.",
-    {
-      agent_id: z.string().optional(), task_id: z.string().optional(), task_description: z.string(),
-      technique_used: z.string(), success: z.boolean(), execution_time_ms: z.number().optional(),
-      sensor_data: z.record(z.unknown()).optional(),
-    },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "learning", subaction: "log" }, body: args }))
-  );
-
-  // ───── 25.5 Agent management PHP (Render version is nwo_r_agent_*) ──────
-  server.tool("nwo_register_agent",
-    "[FALLBACK] PHP self-register agent. Prefer nwo_r_agent_register.",
-    { wallet_address: z.string().optional(), agent_name: z.string(), agent_type: z.string().optional(), capabilities: z.array(z.string()).optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await apiFetch(`${NWO_BASE}/api-agent-register.php`, { method: "POST", body: args }))
-  );
-
-  server.tool("nwo_register_robot",
-    "[FALLBACK] PHP register_robot. Prefer nwo_r_robots_register.",
-    { agent_id: z.string(), name: z.string(), type: z.string(), capabilities: z.array(z.string()).optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "POST", params: { action: "register_agent" }, body: args }))
-  );
-
-  server.tool("nwo_update_agent",
-    "[FALLBACK] PHP update_agent. Prefer nwo_r_agent_update.",
-    { agent_id: z.string(), capabilities: z.array(z.string()).optional(), status: z.string().optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-robotics.php", { method: "PUT", params: { action: "update_agent" }, body: args }))
-  );
-
-  server.tool("nwo_get_agent",
-    "[FALLBACK] PHP get_agent. Prefer nwo_r_agent_get.",
-    { agent_id: z.string() }, { readOnlyHint: true },
-    async ({ agent_id }) => ok(await nwo(apiKey, "/api-robotics.php", { params: { action: "get_agent", agent_id } }))
-  );
-
-  server.tool("nwo_agent_pay",
-    "[FALLBACK] PHP agent_pay. Prefer the on-chain NWOApiSubscriptions purchaseEth / purchaseUsdc — this endpoint is now bookkeeping only.",
-    { agent_id: z.string(), tier: z.enum(["prototype","production"]), billing_period: z.string().optional().default("monthly"), payment_method: z.string().optional(), tx_hash: z.string().optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-agent-pay.php", { method: "POST", body: args }))
-  );
-
-  server.tool("nwo_agent_wallet",
-    "[FALLBACK] Create a hosted MoonPay wallet for credit-card funding.",
-    { agent_id: z.string() }, { readOnlyHint: false, destructiveHint: false },
-    async ({ agent_id }) => ok(await nwo(apiKey, "/api-agent-wallet.php", { method: "POST", body: { action: "create_hosted_wallet", agent_id } }))
-  );
-
-  server.tool("nwo_agent_balance",
-    "[FALLBACK] PHP agent_balance. Prefer nwo_r_agent_balance for the Render-backed view.",
-    {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-agent-balance.php"))
-  );
-
-  // ───── 25.6 Discovery PHP (Render version is nwo_r_discovery_*) ─────────
-  server.tool("nwo_discovery_health",   "[FALLBACK] PHP discovery health. Prefer nwo_r_discovery_health.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-agent-discovery.php", { params: { action: "health" } })));
-
-  server.tool("nwo_discovery_whoami",   "[FALLBACK] PHP whoami. Prefer nwo_r_discovery_whoami.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-agent-discovery.php", { params: { action: "whoami" } })));
-
-  server.tool("nwo_discovery_capabilities", "[FALLBACK] PHP capabilities. Prefer nwo_r_discovery_capabilities.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-agent-discovery.php", { params: { action: "capabilities" } })));
-
-  server.tool("nwo_dry_run",
-    "[FALLBACK] PHP dry-run. Prefer nwo_r_discovery_dry_run.",
-    { instruction: z.string(), robot_id: z.string().optional(), execution_mode: z.enum(["mock","simulated","live"]).optional().default("mock") },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-agent-discovery.php", { method: "POST", params: { action: "dry-run" }, body: args }))
-  );
-
-  server.tool("nwo_plan",
-    "[FALLBACK] PHP plan. Prefer nwo_r_discovery_plan.",
-    { instruction: z.string(), robot_id: z.string().optional(), execution_mode: z.enum(["mock","simulated","live"]).optional().default("mock") },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-agent-discovery.php", { method: "POST", params: { action: "plan" }, body: args }))
-  );
-
-  // ───── 25.7 Physics & Simulation (PHP — heavy compute) ──────────────────
-  server.tool("nwo_simulate_trajectory",
-    "[FALLBACK] PHP PyBullet trajectory sim. CPU-heavy. Prefer nwo_r_print_jobs_create-style flow via the Render gateway proxy.",
-    { agent_id: z.string().optional(), trajectory: z.array(z.array(z.number())), physics_params: z.record(z.unknown()).optional(), check_collision: z.boolean().optional().default(true) },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-simulation.php", { method: "POST", params: { action: "simulate_trajectory" }, body: args }))
-  );
-
-  server.tool("nwo_check_collision",
-    "[FALLBACK] PHP collision check on a trajectory.",
-    { agent_id: z.string().optional(), trajectory: z.array(z.array(z.number())), environment: z.record(z.unknown()).optional() },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-simulation.php", { method: "POST", params: { action: "check_collision" }, body: args }))
-  );
-
-  server.tool("nwo_estimate_torques",
-    "[FALLBACK] PHP joint torque estimation given payload mass.",
-    { agent_id: z.string().optional(), trajectory: z.array(z.array(z.number())), payload_mass: z.number() },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-simulation.php", { method: "POST", params: { action: "estimate_torques" }, body: args }))
-  );
-
-  server.tool("nwo_validate_grasp",
-    "[FALLBACK] PHP grasp stability validation given object shape / mass / grip force.",
-    { agent_id: z.string().optional(), object_shape: z.string(), object_mass: z.number(), grip_force: z.number() },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-simulation.php", { method: "POST", params: { action: "validate_grasp" }, body: args }))
-  );
-
-  server.tool("nwo_plan_motion",
-    "[FALLBACK] PHP RRT* / motion planning (MoveIt2).",
-    { agent_id: z.string().optional(), start_pose: z.array(z.number()), goal_pose: z.array(z.number()), planner: z.string().optional().default("RRTConnect"), avoid_collisions: z.boolean().optional().default(true) },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-simulation.php", { method: "POST", params: { action: "plan_motion" }, body: args }))
-  );
-
-  server.tool("nwo_get_scene_library", "[FALLBACK] PHP list of available sim scenes.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-simulation.php", { params: { action: "get_scene_library" } })));
-
-  server.tool("nwo_cosmos_generate_scene",
-    "[FALLBACK] Cosmos synthetic scene generation (GPU). No Render equivalent yet.",
-    { prompt: z.string(), objects: z.array(z.string()).optional(), lighting: z.string().optional(), variations: z.number().optional().default(100) },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-cosmos.php", { method: "POST", params: { action: "generate_scene" }, body: args }))
-  );
-
-  // ───── 25.8 Embodiment & Calibration PHP (Render version: nwo_r_*) ──────
-  server.tool("nwo_embodiment_list", "[FALLBACK] PHP embodiment list. Prefer nwo_r_embodiment_list.",
-    { filter_type: z.string().optional() }, { readOnlyHint: true },
-    async ({ filter_type }) => ok(await nwo(apiKey, "/api-embodiment.php", { params: { action: "list", filter_type } })));
-
-  server.tool("nwo_embodiment_detail", "[FALLBACK] PHP embodiment detail. Prefer nwo_r_embodiment_get.",
-    { robot_type: z.string() }, { readOnlyHint: true },
-    async ({ robot_type }) => ok(await nwo(apiKey, "/api-embodiment.php", { params: { action: "detail", robot_type } })));
-
-  server.tool("nwo_embodiment_normalization", "[FALLBACK] PHP normalization params. Prefer nwo_r_embodiment_normalization.",
-    { robot_type: z.string() }, { readOnlyHint: true },
-    async ({ robot_type }) => ok(await nwo(apiKey, "/api-embodiment.php", { params: { action: "normalization", robot_type } })));
-
-  server.tool("nwo_embodiment_urdf", "[FALLBACK] PHP URDF download. Prefer nwo_r_embodiment_urdf.",
-    { robot_type: z.string() }, { readOnlyHint: true },
-    async ({ robot_type }) => ok(await nwo(apiKey, "/api-embodiment.php", { params: { action: "urdf", robot_type } })));
-
-  server.tool("nwo_embodiment_test_results", "[FALLBACK] PHP benchmark results (LIBERO/CALVIN/SimplerEnv).",
-    { robot_type: z.string() }, { readOnlyHint: true },
-    async ({ robot_type }) => ok(await nwo(apiKey, "/api-embodiment.php", { params: { action: "test_results", robot_type } })));
-
-  server.tool("nwo_embodiment_compare", "[FALLBACK] PHP embodiment compare. Prefer nwo_r_embodiment_compare.",
-    { robot_types: z.array(z.string()).min(2), compare_fields: z.array(z.string()).optional() }, { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-embodiment.php", { method: "POST", params: { action: "compare" }, body: args }))
-  );
-
-  server.tool("nwo_calibrate_confidence",
-    "[FALLBACK] Calibrate raw model confidence scores to real success probabilities. No Render equivalent yet.",
-    { model_confidence: z.number(), model_id: z.string() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-calibration.php", { method: "POST", params: { action: "calibrate" }, body: args }))
-  );
-
-  server.tool("nwo_run_calibration",
-    "[FALLBACK] PHP run_calibration. Prefer nwo_r_calibration_run.",
-    { agent_id: z.string(), calibration_type: z.string().optional().default("joint_offset"), method: z.string().optional().default("automatic"), samples: z.number().optional().default(100) },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-calibration.php", { method: "POST", params: { action: "run_calibration" }, body: args }))
-  );
-
-  // ───── 25.9 Online RL & Fine-Tune PHP (Render version: nwo_r_*) ─────────
-  server.tool("nwo_start_online_rl",
-    "[FALLBACK] PHP RL session. Prefer nwo_r_rl_session_start.",
-    { agent_id: z.string(), task_name: z.string(), reward_config: z.record(z.number()).optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-online-rl.php", { method: "POST", params: { action: "start_online_rl" }, body: args }))
-  );
-
-  server.tool("nwo_submit_telemetry",
-    "[FALLBACK] PHP submit RL telemetry. Prefer nwo_r_rl_telemetry.",
-    { rl_session_id: z.string(), state: z.array(z.number()).optional(), action: z.array(z.number()).optional(), reward: z.number(), telemetry: z.record(z.unknown()).optional() },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-online-rl.php", { method: "POST", params: { action: "submit_telemetry" }, body: args }))
-  );
-
-  server.tool("nwo_create_fine_tune_dataset",
-    "[FALLBACK] PHP build fine-tune dataset from execution history.",
-    { agent_id: z.string(), start_date: z.string(), end_date: z.string(), format: z.string().optional().default("json") },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-fine-tune.php", { method: "POST", params: { action: "create_dataset" }, body: args }))
-  );
-
-  server.tool("nwo_start_fine_tune_job",
-    "[FALLBACK] PHP start fine-tune job. Prefer nwo_r_finetune_queue.",
-    { dataset_id: z.string(), base_model: z.string().optional().default("xiaomi-robotics-0"), algorithm: z.string().optional().default("LoRA"), rank: z.number().optional().default(32) },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-fine-tune.php", { method: "POST", params: { action: "start_job" }, body: args }))
-  );
-
-  // ───── 25.10 Tactile PHP (Render version: nwo_r_tactile_*) ──────────────
-  server.tool("nwo_orca_get_tactile", "[FALLBACK] PHP read ORCA hand tactile data. Prefer nwo_r_tactile_read.",
-    { finger: z.enum(["index","thumb","middle","ring","pinky","all"]).optional().default("all"), sensor_type: z.enum(["raw_taxels","force_vector","slip_detection"]).optional().default("raw_taxels") },
-    { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api-orca.php", { params: { action: "get_tactile", ...args } })));
-
-  server.tool("nwo_tactile_process",
-    "[FALLBACK] PHP process tactile data — grip quality and recommended force.",
-    { agent_id: z.string().optional(), tactile_data: z.record(z.unknown()) },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-tactile.php", { method: "POST", params: { action: "process_input" }, body: args }))
-  );
-
-  server.tool("nwo_slip_detection",
-    "[FALLBACK] Real-time slip detection (GPU). No Render equivalent.",
-    { agent_id: z.string().optional(), current_tactile: z.array(z.number()), previous_tactile: z.array(z.number()) },
-    { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api-tactile.php", { method: "POST", params: { action: "slip_detection" }, body: args }))
-  );
-
-  // ───── 25.11 Dataset hub PHP (Unitree-specific, no Render equivalent) ──
-  server.tool("nwo_list_unitree_datasets",
-    "List Unitree G1 humanoid datasets (1.54M+ episodes, LeRobot-compatible). Hosted on nwo.capital — no Render equivalent.",
-    {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api-unitree-datasets.php", { params: { action: "list" } })));
-
-  // ───── 25.12 Swarm PHP (no Render equivalent) ───────────────────────────
-  server.tool("nwo_swarm_join", "Add a robot to a multi-robot swarm (PHP — no Render equivalent).",
-    { swarm_id: z.string(), robot_id: z.string() }, { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api/swarm/join", { method: "POST", body: args })));
-
-  server.tool("nwo_swarm_leave", "Remove a robot from a swarm (PHP — no Render equivalent).",
-    { swarm_id: z.string(), robot_id: z.string() }, { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api/swarm/leave", { method: "POST", body: args })));
-
-  server.tool("nwo_swarm_broadcast", "Broadcast a command to all robots in a swarm (PHP — no Render equivalent).",
-    { swarm_id: z.string(), message: z.record(z.unknown()) }, { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api/swarm/broadcast", { method: "POST", body: args })));
-
-  // ───── 25.13 Misc PHP — tasks / config / billing / iot / safety / templates / models ────
-  server.tool("nwo_tasks_list",     "[FALLBACK] PHP tasks list.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api/tasks/list")));
-  server.tool("nwo_tasks_history",  "[FALLBACK] PHP paginated task history.",
-    { limit: z.number().optional().default(20), offset: z.number().optional().default(0) }, { readOnlyHint: true },
-    async ({ limit, offset }) => ok(await nwo(apiKey, "/api/tasks/history", { params: { limit, offset } })));
-
-  server.tool("nwo_config_get",     "[FALLBACK] PHP config get.", { key: z.string().optional() }, { readOnlyHint: true },
-    async ({ key }) => ok(await nwo(apiKey, "/api/config/get", { params: { key } })));
-  server.tool("nwo_config_set",     "[FALLBACK] PHP config set.",
-    { key: z.string(), value: z.unknown() }, { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api/config/set", { method: "POST", body: args })));
-
-  server.tool("nwo_billing_usage",   "[FALLBACK] PHP billing usage. Prefer nwo_r_subscription_status + nwo_r_model_usage.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api/billing/usage")));
-  server.tool("nwo_billing_invoice", "[FALLBACK] PHP billing invoices.",
-    { month: z.string().optional() }, { readOnlyHint: true },
-    async ({ month }) => ok(await nwo(apiKey, "/api/billing/invoice", { params: { month } })));
-
-  server.tool("nwo_iot_command",     "[FALLBACK] PHP IoT command. Prefer nwo_r_iot_networks_* for the Render registry surface.",
-    { device_id: z.string(), command: z.record(z.unknown()) }, { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api/iot/command", { method: "POST", body: args })));
-  server.tool("nwo_iot_status",      "[FALLBACK] PHP IoT status.",
-    { device_id: z.string() }, { readOnlyHint: true },
-    async ({ device_id }) => ok(await nwo(apiKey, "/api/iot/status", { params: { device_id } })));
-
-  server.tool("nwo_safety_check",    "[FALLBACK] PHP safety check. Prefer nwo_r_safety_* for the audit-trail surface.",
-    { action: z.record(z.unknown()), context: z.record(z.unknown()).optional() }, { readOnlyHint: true },
-    async (args) => ok(await nwo(apiKey, "/api/safety/check", { method: "POST", body: args })));
-  server.tool("nwo_safety_alert",    "[FALLBACK] PHP safety alert.",
-    { level: z.enum(["info","warning","critical"]), message: z.string() }, { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api/safety/alert", { method: "POST", body: args })));
-
-  server.tool("nwo_template_list",   "[FALLBACK] PHP code templates list.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api/template/list")));
-  server.tool("nwo_template_get",    "[FALLBACK] PHP code template by id.",
-    { template_id: z.string() }, { readOnlyHint: true },
-    async ({ template_id }) => ok(await nwo(apiKey, "/api/template/get", { params: { template_id } })));
-
-  server.tool("nwo_models_list",     "[FALLBACK] PHP list custom models.", {}, { readOnlyHint: true },
-    async () => ok(await nwo(apiKey, "/api/models/list")));
-  server.tool("nwo_models_upload",   "[FALLBACK] PHP upload custom model.",
-    { name: z.string(), file: z.string() }, { readOnlyHint: false, destructiveHint: false },
-    async (args) => ok(await nwo(apiKey, "/api/models/upload", { method: "POST", body: args })));
-  server.tool("nwo_models_download", "[FALLBACK] PHP download custom model.",
-    { model_id: z.string() }, { readOnlyHint: true },
-    async ({ model_id }) => ok(await nwo(apiKey, "/api/models/download", { params: { model_id } })));
-  server.tool("nwo_models_delete",   "[FALLBACK] PHP delete custom model.",
-    { model_id: z.string() }, { readOnlyHint: false, destructiveHint: true },
-    async ({ model_id }) => ok(await nwo(apiKey, "/api/models/delete", { method: "DELETE", params: { model_id } })));
 
   // ════════════════════════════════════════════════════════════════════════
   //                  ╭───────────────────────────────╮
@@ -1977,12 +1575,13 @@ app.get("/health", (_req: Request, res: Response) => {
     status: "ok",
     name:   "NWO Robotics MCP Server",
     version: "3.0.0",
-    primary_stack: "Render (nwo-capital-api.onrender.com)",
-    fallback_stack: "PHP (nwo.capital) — GPU and streaming only",
-    removed_from_v2: ["spqr_trade", "oracle_predict"],
+    stack: "Render-only (nwo-capital-api.onrender.com + nwo-ros2-bridge + nwo-oracle + nwo-relayer + agentic substrate Spaces)",
+    auth: "X-API-Key header. Same key system as the HF Space (https://huggingface.co/spaces/CPater/nwo-capital) — keys minted, validated, revoked via Render, persisted in Supabase.",
+    removed_in_v3: ["spqr_trade", "oracle_predict", "all 42 PHP fallback tools"],
+    tools: 133,
     categories: {
-      // Primary Render
-      render_core:               7,
+      // Render gateway
+      render_core:               8,
       robots_missions_iot:       8,
       agents:                    6,
       discovery:                 5,
@@ -1996,7 +1595,9 @@ app.get("/health", (_req: Request, res: Response) => {
       agent_graph:               2,
       compute_proxies:           8,
       model_usage_chat:          4,
-      // External Render
+      // Edge inference (Cloudflare Worker)
+      edge_inference:            1,
+      // External Render services
       ros2_bridge:               7,
       cardiac_oracle:            4,
       cardiac_relayer:          14,
@@ -2008,8 +1609,6 @@ app.get("/health", (_req: Request, res: Response) => {
       metastate:                 2,
       asm_compute:               1,
       recruit:                   1,
-      // Fallback PHP
-      php_fallback:             42,
       // BYOR
       byor_design:               3,
       byor_market:               4,
@@ -2022,8 +1621,7 @@ app.get("/health", (_req: Request, res: Response) => {
 
 app.listen(PORT, () => {
   console.log(`NWO Robotics MCP Server v3.0.0 (TypeScript) on port ${PORT}`);
-  console.log(`Primary: ${RENDER_API}`);
-  console.log(`Fallback: ${NWO_BASE}`);
+  console.log(`Gateway: ${RENDER_API}`);
   console.log(`MCP endpoint: POST /mcp`);
   console.log(`Health check: GET /health`);
 });
