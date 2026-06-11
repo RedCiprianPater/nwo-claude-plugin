@@ -1,16 +1,16 @@
 {
   "name": "nwo-claude-plugin",
   "version": "3.0.0",
-  "description": "NWO Robotics MCP Server — 201 tools across the Render gateway, ROS2 bridge, Cardiac Oracle/Relayer, NWO MR, METASTATE, NWO-ASM, and Build Your Own Robot. Render primary, PHP fallback.",
+  "description": "NWO Robotics MCP Server (TypeScript) — 133 tools across the Render gateway, Cloudflare edge, ROS2 bridge, Cardiac Oracle/Relayer, NWO MR, METASTATE, NWO-ASM, and Build Your Own Robot. Render-only stack; no PHP backend.",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build":  "tsc",
-    "start":  "node dist/index.js",
-    "dev":    "tsx watch src/index.ts",
-    "lint":   "tsc --noEmit"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev":   "tsx watch src/index.ts",
+    "lint":  "tsc --noEmit"
   },
-  "keywords": ["mcp", "claude", "robotics", "vla", "nwo", "cardiac", "iot", "swarm", "render", "byor", "metastate", "asm"],
+  "keywords": ["mcp", "claude", "robotics", "vla", "nwo", "cardiac", "iot", "swarm", "render", "byor", "metastate", "asm", "agentic"],
   "author": "RedCiprianPater",
   "license": "MIT",
   "dependencies": {
