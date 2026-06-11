@@ -1,7 +1,7 @@
 {
   "name": "nwo-claude-plugin",
-  "version": "2.0.0",
-  "description": "NWO Robotics MCP Server for Claude — 85 tools across robotics, swarms, IoT, and Cardiac Identity",
+  "version": "3.0.0",
+  "description": "NWO Robotics MCP Server — 201 tools across the Render gateway, ROS2 bridge, Cardiac Oracle/Relayer, NWO MR, METASTATE, NWO-ASM, and Build Your Own Robot. Render primary, PHP fallback.",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "dev":    "tsx watch src/index.ts",
     "lint":   "tsc --noEmit"
   },
-  "keywords": ["mcp", "claude", "robotics", "vla", "nwo", "cardiac", "iot", "swarm"],
+  "keywords": ["mcp", "claude", "robotics", "vla", "nwo", "cardiac", "iot", "swarm", "render", "byor", "metastate", "asm"],
   "author": "RedCiprianPater",
   "license": "MIT",
   "dependencies": {
@@ -22,11 +22,11 @@
     "zod":     "^3.22.0"
   },
   "devDependencies": {
-    "@types/cors":         "^2.8.17",
-    "@types/express":      "^4.17.21",
-    "@types/node":         "^20.0.0",
-    "tsx":                 "^4.7.0",
-    "typescript":          "^5.4.0"
+    "@types/cors":    "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node":    "^20.0.0",
+    "tsx":            "^4.7.0",
+    "typescript":     "^5.4.0"
   },
   "engines": { "node": ">=18.0.0" },
   "repository": {
